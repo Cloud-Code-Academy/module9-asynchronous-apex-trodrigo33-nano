@@ -101,7 +101,10 @@ public with sharing class NextStepFuture {
             WHERE Id = :UserInfo.getUserRoleId() 
             OR Name = 'CRO' 
             LIMIT 1];    
+        
+        if (role != null) {
         updateUserRoleName(role.Id);
+        }
     }
 
     // Future Helper method to insert big deal
