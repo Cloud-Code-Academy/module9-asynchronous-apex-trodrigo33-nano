@@ -46,29 +46,33 @@ public with sharing class NextStepFuture {
     public static void updateAllAccsAndOppsNextStep (List<Id> listAccountIds) {
         // convert list to set to prevent accountId duplicates
         Set<Id> setAccountIds = new Set<Id>(listAccountIds);
+        String NEXTSTEP = 'Meeting in the future';
 
-        List<Account> listAccOpps = [SELECT Id, Next_Step__c, (SELECT Id, AccountId, NextStep FROM Opportunities WHERE NextStep != 'Meeting in the future' OR NextStep = NULL) FROM Account WHERE Id IN :setAccountIds];
+        List<Account> listAccOpps = [
+            SELECT Id, Next_Step__c, 
+            (SELECT Id, NextStep 
+            FROM Opportunities) 
+            FROM Account 
+            WHERE Id 
+            IN :setAccountIds];
 
         List<Account> accUpdate = new List<Account>();
         List<Opportunity> oppUpdate = new List<Opportunity>();
 
         for (Account acc : listAccOpps) {
-            if (acc.Next_Step__c != 'Meeting in the future' ||acc.Next_Step__c == null) {
-            acc.Next_Step__c = 'Meeting in the future';
+            if (acc.Next_Step__c != NEXTSTEP) {
+            acc.Next_Step__c = NEXTSTEP;
             accUpdate.add(acc); 
             }
 
             for (Opportunity opp : acc.Opportunities) {
-                if (acc.Opportunities.isEmpty()) {
-                    continue;
-                }
-
-                if (opp.NextStep != 'Meeting in the future' || opp.NextStep == null ) {
-                opp.NextStep = 'Meeting in the future';
+                if (opp.NextStep != NEXTSTEP) {
+                opp.NextStep = NEXTSTEP;
                 oppUpdate.add(opp);
                 }
             }
         }
+
         if (!accUpdate.isEmpty()) {
             update accUpdate;
         }
@@ -88,10 +92,15 @@ public with sharing class NextStepFuture {
     */
     //Mix DML Error happens when you try to perform DML operations on setup and non-setup objects in a single transaction.
     public static void createDealAndUpdateRole() {
-        insertBigDeal();
 
-        UserRole role = [SELECT Id, Name FROM UserRole WHERE Id = :UserInfo.getUserRoleId() OR Name = 'CRO' LIMIT 1];
+        UserRole role = [
+            SELECT Id, Name 
+            FROM UserRole 
+            WHERE Id = :UserInfo.getUserRoleId() 
+            OR Name = 'CRO' 
+            LIMIT 1];
         updateUserRoleName(role.Id);
+        insertBigDeal();
        
     }
 
@@ -111,10 +120,14 @@ public with sharing class NextStepFuture {
     private static void updateUserRoleName(Id roleId){
         UserRole role;
         if (roleId == null) {
-            role = new UserRole(Name = 'CRO', PortalType = 'None', CaseAccessForAccountOwner = 'Edit');
+            role = new UserRole(
+                Name = 'CRO', 
+                PortalType = 'None', 
+                CaseAccessForAccountOwner = 'Edit');
         } else {
             role = new UserRole(
-            Id = roleId, Name = 'CRO');
+            Id = roleId,
+            Name = 'CRO');
         }
         upsert role;
     }
