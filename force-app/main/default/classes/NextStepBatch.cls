@@ -21,36 +21,45 @@
 public with sharing class NextStepBatch implements Database.Batchable<sObject>{
 
     //batch start method - gathers records to be processed in batch 
+            // Query for all accounts and return the query locator.
     public Database.QueryLocator start(Database.BatchableContext bc){
-        // Query for all accounts and return the query locator.
-        return Database.getQueryLocator([SELECT Id, Next_Step__c FROM Account]); // Update null with the query locator
+
+        return Database.getQueryLocator([
+                                        SELECT Id, Next_Step__c, (
+                                        SELECT Id, AccountId, NextStep 
+                                        FROM Opportunities) 
+                                        FROM Account]); // Update null with the query locator
     }
     
     //batch execute method
+        // Update the Next Step field on each record in the batch scope.
+            // Loop through the scope account records
+                // Set the Next Step field to 'Batching the next meetings together.'
+                // Update the account records in this batch scope
+
+        // Query for all opportunities related to the accounts in this batch scope
+            // Loop through the opportunity records
+                // Set the Next Step field to 'Batching the next meetings together.'
+                // Update the opportunity records
+
     public void execute(Database.BatchableContext bc, List<Account> scope){
         final String BATCH_NEXT_STEP = 'Batching the next meetings together.';
 
-        // Update the Next Step field on each record in the batch scope.
-        // Loop through the scope account records
-            // Set the Next Step field to 'Batching the next meetings together.'
-            // Update the account records in this batch scope
+        List<Opportunity> oppsUpdate = new List<Opportunity>();
 
         for (Account acc : scope) {
             acc.Next_Step__c = BATCH_NEXT_STEP;
-        }
-        
-        // Query for all opportunities related to the accounts in this batch scope
-        // Loop through the opportunity records
-            // Set the Next Step field to 'Batching the next meetings together.'
-            // Update the opportunity records
 
-        List<Opportunity> oppScope = [SELECT Id, AccountId, NextStep FROM Opportunity WHERE AccountId IN: scope];
-        for (Opportunity opp : oppScope) {
-            opp.NextStep = BATCH_NEXT_STEP;
+            for (Opportunity opp : acc.Opportunities) {
+                if (acc.Opportunities.size() > 0) {
+                    opp.NextStep = BATCH_NEXT_STEP;
+                    oppsUpdate.add(opp);
+                }
         }
-        
-        update scope;
-        update oppScope;
+    }
+    update scope;
+    update oppsUpdate;
+
     }
     
     //batch finish method
