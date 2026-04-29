@@ -41,9 +41,15 @@ public with sharing class AsynchronousTest {
         }
         insert testOpps;
 
+        //TR: Created this as we can't pass non-primitive types into a future method's parameter.
+        List<Id> testAccountIds = new List<Id> ();
+        for (Account acc : testAccounts) {
+            testAccountIds.add(acc.Id);
+        }
+
         // Call the method to test between the startTest and stopTest methods
         Test.startTest();
-        //YOUR CODE HERE
+        NextStepFuture.updateAllAccsAndOppsNextStep(testAccountIds);
         Test.stopTest();
 
         // Query the updated accounts and opportunities

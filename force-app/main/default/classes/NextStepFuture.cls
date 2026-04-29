@@ -27,50 +27,91 @@ public with sharing class NextStepFuture {
      * Opportunity Next Step field is a standard field
      * Update the corresponding test class AsynchronousTest and test method nextStepFuture_testUpdateAllNextStep to cover test this method
      */
-    //[public | private ] [static] data_type method_name (input parameters) {
-    //  The body of the method
-    //}
+
+     /* TR NOTES
+     *  FOR listAccOpps:
+     *  DECISION: Either I query once for account and for related opps OR query separately for Account AND Opps. 
+     *  DECISION: Query once for both items needed, to reduce number of queries.
+     * 
+     * For SECOND for loop:
+        //Loop through each opportunity and account (where needed)
+        // No guards on opp for loop as we have only queried for opportunities where NextStep does not = 'Meeting in the Future'.
+        // no need for if statement as we are looping through list of opps that do not meet requirement only.
+        // declare and instantiate a new account for next if check.
+     * 
+     * 
+     */
+
+    @future
+    public static void updateAllAccsAndOppsNextStep (List<Id> listAccountIds) {
+        // convert list to set to prevent accountId duplicates
+        Set<Id> setAccountIds = new Set<Id>(listAccountIds);
+
+        List<Account> listAccOpps = [SELECT Id, Next_Step__c, (SELECT Id, AccountId, NextStep FROM Opportunities WHERE NextStep != 'Meeting in the future' OR NextStep = NULL) FROM Account WHERE Id IN :setAccountIds];
+
+        List<Account> accUpdate = new List<Account>();
+        List<Opportunity> oppUpdate = new List<Opportunity>();
+
+        for (Account acc : listAccOpps) {
+            if (acc.Next_Step__c != 'Meeting in the future' ||acc.Next_Step__c == null) {
+            acc.Next_Step__c = 'Meeting in the future';
+            accUpdate.add(acc); 
+            }
+
+            for (Opportunity opp : acc.Opportunities) {
+                if (opp.NextStep != 'Meeting in the future' || opp.NextStep == null ) {
+                opp.NextStep = 'Meeting in the future';
+                oppUpdate.add(opp);
+                }
+            }
+        }
+        if (!accUpdate.isEmpty()) {
+            update accUpdate;
+        }
+        if (!oppUpdate.isEmpty()) {
+            update oppUpdate; 
+        }
+}
 
     /*
     * Question 2
     * Update/Uncomment the template code to create a method
     * Create a method that inserts a big deal opportunity and updates the user role name to 'CRO'
     * Update the corresponding test class AsynchronousTest and test method nextStepFuture_testCreateDealAndUpdateRole to cover test this method
+    *
+    *TR - Because we have two dmls for a setup object and non-setup object, we can't call both helpers in one transaction, so we have to call them in their own separate transaction. A future method
+    * - starts its own transaction. Both helper methods were turned to future methods so that the parent can call on them both separately, avoiding the mixed DML error.
     */
     //Mix DML Error happens when you try to perform DML operations on setup and non-setup objects in a single transaction.
     public static void createDealAndUpdateRole() {
-        Opportunity bigDeal = new Opportunity();
-        insertBigDeal(bigDeal);
+        insertBigDeal();
 
-        UserRole[] roles = [SELECT Id, Name FROM UserRole WHERE Id = :UserInfo.getUserRoleId() OR Name = 'CRO' LIMIT 1];
-        updateUserRoleName(roles);
+        UserRole role = [SELECT Id, Name FROM UserRole WHERE Id = :UserInfo.getUserRoleId() OR Name = 'CRO' LIMIT 1];
+        updateUserRoleName(role.Id);
+       
     }
 
-    // Helper method to insert big deal
-    private static void insertBigDeal(Opportunity opp) {
+    // Future Helper method to insert big deal
+    @future
+    private static void insertBigDeal() {
+        Opportunity opp = new Opportunity();
         opp.Amount = 1000000;
         opp.Name = 'Big Deal';
         opp.StageName = 'Closed Won'; 
         opp.CloseDate = Date.today();
-        
         insert opp;
     }
 
-
-    // Helper method to update role name
-    private static void updateUserRoleName(UserRole[] roles){
+    // Future Helper method to update role name
+    @future
+    private static void updateUserRoleName(Id roleId){
         UserRole role;
-        if (roles.isEmpty()) {
-            role = new UserRole();
-            role.portalType = 'None'; 
-            role.CaseAccessForAccountOwner = 'Edit'; 
-            // role.OpportunityAccessForAccountOwner = 'Edit'; //This may need to be uncommented depending on your orgs Organization Wide Defaults(OWD) settings. If you are receiving FIELD_INTEGRITY_EXCEPTION, field integrity exception: unknown (Opportunity access level below organization default): [unknown], uncomment this line.
+        if (roleId == null) {
+            role = new UserRole(Name = 'CRO', PortalType = 'None', CaseAccessForAccountOwner = 'Edit');
         } else {
-            role = roles[0];
+            role = new UserRole(
+            Id = roleId, Name = 'CRO');
         }
-
-        role.Name = 'CRO';
-
         upsert role;
     }
 }
