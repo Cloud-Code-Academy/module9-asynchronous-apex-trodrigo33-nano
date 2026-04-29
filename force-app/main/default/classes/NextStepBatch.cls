@@ -28,7 +28,7 @@ public with sharing class NextStepBatch implements Database.Batchable<sObject>{
                                         SELECT Id, Next_Step__c, (
                                         SELECT Id, AccountId, NextStep 
                                         FROM Opportunities) 
-                                        FROM Account]); // Update null with the query locator
+                                        FROM Account]); 
     }
     
     //batch execute method
@@ -63,11 +63,12 @@ public with sharing class NextStepBatch implements Database.Batchable<sObject>{
     }
     
     //batch finish method
+        // Get the email addresses of all active users
+        // Pass the set of active user emails to the sendEmailToActiveUsers method
+
     public void finish(Database.BatchableContext bc){
         final List<User> USERS = [SELECT Id, Name, Email FROM User WHERE IsActive = true AND (NOT Email LIKE 'autoproc%')]; // DO NOT CHANGE
 
-        // Get the email addresses of all active users
-                // Pass the set of active user emails to the sendEmailToActiveUsers method
         Set<String> emails = new Set<String>();
         for (User user : USERS) {
             emails.add(user.Email);
