@@ -93,15 +93,15 @@ public with sharing class NextStepFuture {
     //Mix DML Error happens when you try to perform DML operations on setup and non-setup objects in a single transaction.
     public static void createDealAndUpdateRole() {
 
+        insertBigDeal();
+
         UserRole role = [
             SELECT Id, Name 
             FROM UserRole 
             WHERE Id = :UserInfo.getUserRoleId() 
             OR Name = 'CRO' 
-            LIMIT 1];
+            LIMIT 1];    
         updateUserRoleName(role.Id);
-        insertBigDeal();
-       
     }
 
     // Future Helper method to insert big deal
