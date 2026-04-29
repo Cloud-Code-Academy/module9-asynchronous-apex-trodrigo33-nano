@@ -59,6 +59,10 @@ public with sharing class NextStepFuture {
             }
 
             for (Opportunity opp : acc.Opportunities) {
+                if (acc.Opportunities.isEmpty()) {
+                    continue;
+                }
+
                 if (opp.NextStep != 'Meeting in the future' || opp.NextStep == null ) {
                 opp.NextStep = 'Meeting in the future';
                 oppUpdate.add(opp);
