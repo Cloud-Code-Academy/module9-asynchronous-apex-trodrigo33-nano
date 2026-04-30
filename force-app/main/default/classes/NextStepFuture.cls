@@ -26,51 +26,97 @@ public with sharing class NextStepFuture {
      * Account Next Step field is a custom field
      * Opportunity Next Step field is a standard field
      * Update the corresponding test class AsynchronousTest and test method nextStepFuture_testUpdateAllNextStep to cover test this method
+     *
+     * 
+     * 
      */
-    //[public | private ] [static] data_type method_name (input parameters) {
-    //  The body of the method
-    //}
+
+    @future
+    public static void updateAllAccsAndOppsNextStep (List<Id> listAccountIds) {
+        // convert list to set to prevent accountId duplicates
+        Set<Id> setAccountIds = new Set<Id>(listAccountIds);
+        String NEXTSTEP = 'Meeting in the future';
+
+        // Query for accounts and opportunities in separate lists.
+        // Loop through each list and update nextStep field
+        // Update lists if not empty
+        List<Account> accUpdate = new List<Account>([SELECT Id, Next_Step__c FROM Account WHERE Id IN: setAccountIds]);
+        List<Opportunity> oppUpdate = new List<Opportunity>([SELECT Id, NextStep FROM Opportunity WHERE AccountId IN :setAccountIds]);
+
+        for (Account acc : accUpdate) {
+            if (acc.Next_Step__c != NEXTSTEP) {
+            acc.Next_Step__c = NEXTSTEP;
+            }
+        }
+
+        for (Opportunity opp : oppUpdate) {
+            if (opp.NextStep != NEXTSTEP) {
+            opp.NextStep = NEXTSTEP;
+            }
+        }
+
+        if (!accUpdate.isEmpty()) {
+            update accUpdate;
+        }
+        if (!oppUpdate.isEmpty()) {
+            update oppUpdate; 
+        }
+}
 
     /*
     * Question 2
     * Update/Uncomment the template code to create a method
     * Create a method that inserts a big deal opportunity and updates the user role name to 'CRO'
     * Update the corresponding test class AsynchronousTest and test method nextStepFuture_testCreateDealAndUpdateRole to cover test this method
+    *
+    *TR - Because we have two DMLS for a setup object and non-setup object, we can't call both helpers in one transaction, so we have to call them in their own separate transaction. A future method
+    * - starts its own transaction. Both helper methods were turned to future methods so that the parent can call on them both separately, avoiding the mixed DML error.
+    *
+    * Mix DML Error happens when you try to perform DML operations on setup and non-setup objects in a single transaction.
     */
-    //Mix DML Error happens when you try to perform DML operations on setup and non-setup objects in a single transaction.
     public static void createDealAndUpdateRole() {
-        Opportunity bigDeal = new Opportunity();
-        insertBigDeal(bigDeal);
 
-        UserRole[] roles = [SELECT Id, Name FROM UserRole WHERE Id = :UserInfo.getUserRoleId() OR Name = 'CRO' LIMIT 1];
-        updateUserRoleName(roles);
+        // call Opportunity future Method
+        insertBigDeal();
+
+        // setup data and call UserRole future method
+        UserRole role = [
+            SELECT Id, Name 
+            FROM UserRole 
+            WHERE Id = :UserInfo.getUserRoleId() 
+            OR Name = 'CRO' 
+            LIMIT 1];    
+        
+        if (role != null) {
+        updateUserRoleName(role.Id);
+        }
     }
 
-    // Helper method to insert big deal
-    private static void insertBigDeal(Opportunity opp) {
+    // Future Helper method to insert big deal
+    @future
+    private static void insertBigDeal() {
+        Opportunity opp = new Opportunity();
         opp.Amount = 1000000;
         opp.Name = 'Big Deal';
         opp.StageName = 'Closed Won'; 
         opp.CloseDate = Date.today();
-        
         insert opp;
     }
 
-
-    // Helper method to update role name
-    private static void updateUserRoleName(UserRole[] roles){
+    // Future Helper method to update role name
+    @future
+    private static void updateUserRoleName(Id roleId){
         UserRole role;
-        if (roles.isEmpty()) {
-            role = new UserRole();
-            role.portalType = 'None'; 
-            role.CaseAccessForAccountOwner = 'Edit'; 
-            // role.OpportunityAccessForAccountOwner = 'Edit'; //This may need to be uncommented depending on your orgs Organization Wide Defaults(OWD) settings. If you are receiving FIELD_INTEGRITY_EXCEPTION, field integrity exception: unknown (Opportunity access level below organization default): [unknown], uncomment this line.
+        if (roleId == null) {
+            role = new UserRole(
+                Name = 'CRO', 
+                PortalType = 'None', 
+                CaseAccessForAccountOwner = 'Edit');
         } else {
-            role = roles[0];
+            role = new UserRole(
+            Id = roleId,
+            Name = 'CRO');
         }
-
-        role.Name = 'CRO';
-
         upsert role;
     }
 }

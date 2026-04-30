@@ -17,51 +17,82 @@
  * 
  * Note: The class below contains placeholders for implementing a queueable job to update accounts and opportunities.
  */
-public with sharing class NextStepQueueable {
+public with sharing class NextStepQueueable implements Queueable{
 
+    ////TR - Created maxdepth control 
+    // TR - added check to see if maximumqueuestackdepth is maxed at 5 (sandbox)
     // Member variable to store the accounts
-    private Map<Id,Account> accounts;
-
     // Constructor to accept the accounts
-    public NextStepQueueable(Map<Id,Account> accounts) {
         // Store the accounts in a member variable
+
+    private static final Integer MAX_JOBS = 5;
+    private Map<Id,Account> accounts;
+    public NextStepQueueable(Map<Id,Account> accounts) {
+        this.accounts = accounts;
     }
 
     // Method to queue the job
-    public static void enqueueJob() {
         // Get 10 accounts with Next Step populated
-
         // If there are any accounts, queue the job using System.enqueueJob
+        // TR - This method makes the decision to either chain a new job or stop the chain. 
+        // TR - It is only called AFTER the execute() method is complete (i.e the current queued job has finished processing and either ends or starts a new job)
+
+    public static void enqueueJob() {
+        Map<Id,Account> accounts = new Map<Id, Account>([SELECT Id, Next_Step__c FROM Account WHERE Next_Step__c != NULL LIMIT 10]);
+        if (!accounts.isEmpty()) {
+            System.enqueueJob(new NextStepQueueable(accounts));
+        }
     }
 
     /*
      * Update/Uncomment the template code to create a method
      * Method to execute the queueable job
      */
-    //[public | private ] [static] data_type execute (input parameters) {
-        // Get the accounts from the member variable
 
-            // Remove the Next Step using the helper method
-
+    // Get the accounts from the member variable
+        // Remove the Next Step using the helper method
         // Update the accounts
 
-        // Get the opportunities related to the accounts
-
-            // Remove the Next Step using the helper method
-
+    // Get the opportunities related to the accounts
+        // Remove the Next Step using the helper method
         // Update the opportunities
+    
+    // Call the enqueueJob method to queue another job to process more records.
 
-        // Call the enqueueJob method to queue another job to process more records.
-    //}
+    public void execute (QueueableContext context) {
 
-    // Helper method to remove the Next Step
-    // Overloaded method to accept an opportunity
-    private static void removeNextStep(Opportunity opp) {
-        opp.NextStep = null;
+        Boolean reachedDepthMax = AsyncInfo.getMaximumQueueableStackDepth() == MAX_JOBS;
+        if (reachedDepthMax) {
+            return;
+        }
+
+        List<Account> accUpdate = [SELECT Id, Next_Step__c FROM Account WHERE Id IN :accounts.keySet()];
+        for (Account acc : accUpdate) {
+            removeNextStep(acc);
+        }
+
+        List<Opportunity> oppUpdate = new List<Opportunity>([SELECT Id, NextStep, AccountId FROM Opportunity WHERE AccountId IN :accounts.keySet() AND NextStep != NULL]);
+        for (Opportunity opp : oppUpdate) {
+            removeNextStep(opp);
+        }
+        update accUpdate;
+        update oppUpdate;
+
+        // TR - Current job has ended, calls on method enqueueJob() to determine if we want to continue a new job OR end the overall process.
+        NextStepQueueable.enqueueJob();
     }
 
     // Helper method to remove the Next Step
+    // Overloaded method to accept an opportunity
+
+    // Helper method to remove the Next Step
     // Overloaded method to accept an account
+
+    private static void removeNextStep(Opportunity opp) {
+        opp.NextStep = null;
+
+    }
+
     private static void removeNextStep(Account acc) {
         acc.Next_Step__c = null;
     }

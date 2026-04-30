@@ -20,38 +20,66 @@
  */
 public with sharing class NextStepBatch implements Database.Batchable<sObject>{
 
+    //batch start method - gathers records to be processed in batch 
+            // Query for all accounts and return the query locator.
     public Database.QueryLocator start(Database.BatchableContext bc){
-        // Query for all accounts and return the query locator.
-        return null; // Update null with the query locator
+
+        return Database.getQueryLocator([
+                                        SELECT Id, Next_Step__c, (
+                                        SELECT Id, AccountId, NextStep 
+                                        FROM Opportunities) 
+                                        FROM Account]); 
     }
     
+    // batch execute method
+    //     Update the Next Step field on each record in the batch scope.
+    //         Loop through the scope account records
+    //             Set the Next Step field to 'Batching the next meetings together.'
+    //             Update the account records in this batch scope
+
+    //     Query for all opportunities related to the accounts in this batch scope
+    //         Loop through the opportunity records
+    //             Set the Next Step field to 'Batching the next meetings together.'
+    //             Update the opportunity records
+
+    // TR - I feel like doing a nested for loop is better, because I want to pass in as many objects as possible without having to query
+    // once in the execute method. Execute should be solely for processing the data. 
+    // Also, I think a batch class can handle multiple loops, and this loop is safe because we're only assigning values within it. This shouldn't eat up too much memory
+    // and cause inefficiencies. If I had to put in several guards and checks while I loop in a nested for loop, then I would consider separating it out.
+
     public void execute(Database.BatchableContext bc, List<Account> scope){
         final String BATCH_NEXT_STEP = 'Batching the next meetings together.';
 
-        // Update the Next Step field on each record in the batch scope.
+        List<Opportunity> oppsUpdate = new List<Opportunity>();
 
-        // Loop through the scope account records
+        for (Account acc : scope) {
+            acc.Next_Step__c = BATCH_NEXT_STEP;
 
-            // Set the Next Step field to 'Batching the next meetings together.'
-
-        // Update the account records in this batch scope
-        
-        // Query for all opportunities related to the accounts in this batch scope
-
-        // Loop through the opportunity records
-
-            // Set the Next Step field to 'Batching the next meetings together.'
-
-        // Update the opportunity records
-
+            for (Opportunity opp : acc.Opportunities) {
+                if (acc.Opportunities.size() > 0) {
+                    opp.NextStep = BATCH_NEXT_STEP;
+                    oppsUpdate.add(opp);
+                }
+            }
+        }
+    update scope;
+    update oppsUpdate;
     }
     
+    //batch finish method
+        // Get the email addresses of all active users
+        // Pass the set of active user emails to the sendEmailToActiveUsers method
+
     public void finish(Database.BatchableContext bc){
         final List<User> USERS = [SELECT Id, Name, Email FROM User WHERE IsActive = true AND (NOT Email LIKE 'autoproc%')]; // DO NOT CHANGE
 
-        // Get the email addresses of all active users
-
-            // Pass the set of active user emails to the sendEmailToActiveUsers method
+        Set<String> emails = new Set<String>();
+        for (User user : USERS) {
+            emails.add(user.Email);
+        }
+        if (!emails.isEmpty()) {
+        sendEmailToActiveUsers(emails);
+        }
     }
 
     // Helper method to send an email to all emails in the set
