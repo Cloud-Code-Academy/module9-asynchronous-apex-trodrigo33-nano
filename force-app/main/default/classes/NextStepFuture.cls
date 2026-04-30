@@ -26,18 +26,7 @@ public with sharing class NextStepFuture {
      * Account Next Step field is a custom field
      * Opportunity Next Step field is a standard field
      * Update the corresponding test class AsynchronousTest and test method nextStepFuture_testUpdateAllNextStep to cover test this method
-     */
-
-     /* TR NOTES
-     *  FOR listAccOpps:
-     *  DECISION: Either I query once for account and for related opps OR query separately for Account AND Opps. 
-     *  DECISION: Query once for both items needed, to reduce number of queries.
-     * 
-     * For SECOND for loop:
-        //Loop through each opportunity and account (where needed)
-        // No guards on opp for loop as we have only queried for opportunities where NextStep does not = 'Meeting in the Future'.
-        // no need for if statement as we are looping through list of opps that do not meet requirement only.
-        // declare and instantiate a new account for next if check.
+     *
      * 
      * 
      */
@@ -48,28 +37,21 @@ public with sharing class NextStepFuture {
         Set<Id> setAccountIds = new Set<Id>(listAccountIds);
         String NEXTSTEP = 'Meeting in the future';
 
-        List<Account> listAccOpps = [
-            SELECT Id, Next_Step__c, 
-            (SELECT Id, NextStep 
-            FROM Opportunities) 
-            FROM Account 
-            WHERE Id 
-            IN :setAccountIds];
+        // Query for accounts and opportunities in separate lists.
+        // Loop through each list and update nextStep field
+        // Update lists if not empty
+        List<Account> accUpdate = new List<Account>([SELECT Id, Next_Step__c FROM Account WHERE Id IN: setAccountIds]);
+        List<Opportunity> oppUpdate = new List<Opportunity>([SELECT Id, NextStep FROM Opportunity WHERE AccountId IN :setAccountIds]);
 
-        List<Account> accUpdate = new List<Account>();
-        List<Opportunity> oppUpdate = new List<Opportunity>();
-
-        for (Account acc : listAccOpps) {
+        for (Account acc : accUpdate) {
             if (acc.Next_Step__c != NEXTSTEP) {
             acc.Next_Step__c = NEXTSTEP;
-            accUpdate.add(acc); 
             }
+        }
 
-            for (Opportunity opp : acc.Opportunities) {
-                if (opp.NextStep != NEXTSTEP) {
-                opp.NextStep = NEXTSTEP;
-                oppUpdate.add(opp);
-                }
+        for (Opportunity opp : oppUpdate) {
+            if (opp.NextStep != NEXTSTEP) {
+            opp.NextStep = NEXTSTEP;
             }
         }
 
@@ -87,14 +69,17 @@ public with sharing class NextStepFuture {
     * Create a method that inserts a big deal opportunity and updates the user role name to 'CRO'
     * Update the corresponding test class AsynchronousTest and test method nextStepFuture_testCreateDealAndUpdateRole to cover test this method
     *
-    *TR - Because we have two dmls for a setup object and non-setup object, we can't call both helpers in one transaction, so we have to call them in their own separate transaction. A future method
+    *TR - Because we have two DMLS for a setup object and non-setup object, we can't call both helpers in one transaction, so we have to call them in their own separate transaction. A future method
     * - starts its own transaction. Both helper methods were turned to future methods so that the parent can call on them both separately, avoiding the mixed DML error.
+    *
+    * Mix DML Error happens when you try to perform DML operations on setup and non-setup objects in a single transaction.
     */
-    //Mix DML Error happens when you try to perform DML operations on setup and non-setup objects in a single transaction.
     public static void createDealAndUpdateRole() {
 
+        // call Opportunity future Method
         insertBigDeal();
 
+        // setup data and call UserRole future method
         UserRole role = [
             SELECT Id, Name 
             FROM UserRole 

@@ -31,16 +31,21 @@ public with sharing class NextStepBatch implements Database.Batchable<sObject>{
                                         FROM Account]); 
     }
     
-    //batch execute method
-        // Update the Next Step field on each record in the batch scope.
-            // Loop through the scope account records
-                // Set the Next Step field to 'Batching the next meetings together.'
-                // Update the account records in this batch scope
+    // batch execute method
+    //     Update the Next Step field on each record in the batch scope.
+    //         Loop through the scope account records
+    //             Set the Next Step field to 'Batching the next meetings together.'
+    //             Update the account records in this batch scope
 
-        // Query for all opportunities related to the accounts in this batch scope
-            // Loop through the opportunity records
-                // Set the Next Step field to 'Batching the next meetings together.'
-                // Update the opportunity records
+    //     Query for all opportunities related to the accounts in this batch scope
+    //         Loop through the opportunity records
+    //             Set the Next Step field to 'Batching the next meetings together.'
+    //             Update the opportunity records
+
+    // TR - I feel like doing a nested for loop is better, because I want to pass in as many objects as possible without having to query
+    // once in the execute method. Execute should be solely for processing the data. 
+    // Also, I think a batch class can handle multiple loops, and this loop is safe because we're only assigning values within it. This shouldn't eat up too much memory
+    // and cause inefficiencies. If I had to put in several guards and checks while I loop in a nested for loop, then I would consider separating it out.
 
     public void execute(Database.BatchableContext bc, List<Account> scope){
         final String BATCH_NEXT_STEP = 'Batching the next meetings together.';
@@ -55,11 +60,10 @@ public with sharing class NextStepBatch implements Database.Batchable<sObject>{
                     opp.NextStep = BATCH_NEXT_STEP;
                     oppsUpdate.add(opp);
                 }
+            }
         }
-    }
     update scope;
     update oppsUpdate;
-
     }
     
     //batch finish method

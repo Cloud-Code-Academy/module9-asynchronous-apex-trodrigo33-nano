@@ -19,7 +19,8 @@
  */
 public with sharing class NextStepQueueable implements Queueable{
 
-    
+    ////TR - Created maxdepth control 
+    // TR - added check to see if maximumqueuestackdepth is maxed at 5 (sandbox)
     // Member variable to store the accounts
     // Constructor to accept the accounts
         // Store the accounts in a member variable
@@ -31,9 +32,10 @@ public with sharing class NextStepQueueable implements Queueable{
     }
 
     // Method to queue the job
-        // TR - added check to see if maximumqueuestackdepth is maxed at 5 (sandbox)
         // Get 10 accounts with Next Step populated
         // If there are any accounts, queue the job using System.enqueueJob
+        // TR - This method makes the decision to either chain a new job or stop the chain. 
+        // TR - It is only called AFTER the execute() method is complete (i.e the current queued job has finished processing and either ends or starts a new job)
 
     public static void enqueueJob() {
         Map<Id,Account> accounts = new Map<Id, Account>([SELECT Id, Next_Step__c FROM Account WHERE Next_Step__c != NULL LIMIT 10]);
@@ -46,8 +48,6 @@ public with sharing class NextStepQueueable implements Queueable{
      * Update/Uncomment the template code to create a method
      * Method to execute the queueable job
      */
-
-    ////TR - Created maxdepth control 
 
     // Get the accounts from the member variable
         // Remove the Next Step using the helper method
@@ -77,6 +77,8 @@ public with sharing class NextStepQueueable implements Queueable{
         }
         update accUpdate;
         update oppUpdate;
+
+        // TR - Current job has ended, calls on method enqueueJob() to determine if we want to continue a new job OR end the overall process.
         NextStepQueueable.enqueueJob();
     }
 
